@@ -1,6 +1,9 @@
 # Licensed CRSP data (see data/README.md)
 data/crsp_*.csv
 
+# Editable source of the paper (kept locally; the PDF is published)
+report/*.docx
+
 # Python
 __pycache__/
 *.py[cod]

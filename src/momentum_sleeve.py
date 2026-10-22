@@ -63,7 +63,8 @@ def weekly_rebalance_dates(df: pd.DataFrame) -> pd.DatetimeIndex:
     return weekly.intersection(all_dates)
 
 
-def build_portfolio_returns(df_scored: pd.DataFrame, top_n: int = TOP_N) -> pd.DataFrame:
+def build_portfolio_returns(df_scored: pd.DataFrame, top_n: int = TOP_N):
+    """Return (daily returns DataFrame, {date: portfolio weights held that day})."""
     df = df_scored.dropna(subset=["score"])
     df = df.drop_duplicates(subset=[ID_COL, DATE_COL], keep="last")
 
@@ -74,6 +75,7 @@ def build_portfolio_returns(df_scored: pd.DataFrame, top_n: int = TOP_N) -> pd.D
     weekly_dates = weekly_dates.intersection(score_panel.index)
 
     port_ret = pd.Series(index=ret_panel.index, dtype=float)
+    holdings = {}
 
     for i, t in enumerate(weekly_dates):
         # hold from the next trading day after t through the next rebalance date
@@ -97,9 +99,15 @@ def build_portfolio_returns(df_scored: pd.DataFrame, top_n: int = TOP_N) -> pd.D
         else:
             port_ret.loc[mask] = 0.0
 
-    return pd.DataFrame({"port_ret": port_ret.dropna()})
+        weights = pd.Series(1.0 / len(top_ids), index=top_ids) if len(top_ids) else pd.Series(dtype=float)
+        for d in ret_panel.index[mask]:
+            holdings[d] = weights
+
+    return pd.DataFrame({"port_ret": port_ret.dropna()}), holdings
 
 
-def momentum_returns(csv_path: Path) -> pd.Series:
+def momentum_returns(csv_path: Path):
+    """Daily momentum sleeve returns and holdings."""
     scored = compute_momentum_scores(load_panel(csv_path))
-    return build_portfolio_returns(scored, top_n=TOP_N)["port_ret"]
+    port_df, holdings = build_portfolio_returns(scored, top_n=TOP_N)
+    return port_df["port_ret"], holdings

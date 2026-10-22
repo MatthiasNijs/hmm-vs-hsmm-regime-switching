@@ -330,7 +330,7 @@ def main():
             rows.append({
                 "model": model_name,
                 "regime": regime,
-                "ann_return_compounded": (1.0 + r.mean()) ** TRADING_DAYS - 1.0,
+                "ann_return": r.mean() * TRADING_DAYS,
                 "ann_vol": r.std(ddof=1) * np.sqrt(TRADING_DAYS),
                 "sharpe": r.mean() / r.std(ddof=1) * np.sqrt(TRADING_DAYS),
                 "mean_run_length": state_runs.mean(),

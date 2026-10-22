@@ -54,12 +54,14 @@ def compute_reversal_signal(df: pd.DataFrame) -> pd.DataFrame:
     return df.merge(z_long, on=[DATE_COL, ID_COL], how="left")
 
 
-def backtest_mean_reversion(signals: pd.DataFrame) -> pd.DataFrame:
+def backtest_mean_reversion(signals: pd.DataFrame):
+    """Return (daily returns DataFrame, {date: portfolio weights held that day})."""
     panel_ret = signals.pivot(index=DATE_COL, columns=ID_COL, values="ret").sort_index()
     panel_sig = signals.pivot(index=DATE_COL, columns=ID_COL, values="z_rev").sort_index()
 
     dates = panel_ret.index.to_list()
     port_ret = pd.Series(index=dates, dtype=float)
+    holdings = {}
 
     # long and short ID lists for the last HOLD_DAYS formations
     active_formations = deque(maxlen=HOLD_DAYS)
@@ -90,9 +92,17 @@ def backtest_mean_reversion(signals: pd.DataFrame) -> pd.DataFrame:
 
         port_ret.loc[dt_next] = np.nanmean(daily_ls)
 
-    return pd.DataFrame({"port_ret": port_ret.dropna()})
+        # each formation gets an equal share of capital: +1/50 per long, -1/50 per short
+        w = 1.0 / (len(active_formations) * TOP_N_PER_SIDE)
+        parts = [pd.Series(w, index=longs) for longs, _ in active_formations]
+        parts += [pd.Series(-w, index=shorts) for _, shorts in active_formations]
+        holdings[dt_next] = pd.concat(parts).groupby(level=0).sum()
+
+    return pd.DataFrame({"port_ret": port_ret.dropna()}), holdings
 
 
-def mean_reversion_returns(csv_path: Path) -> pd.Series:
+def mean_reversion_returns(csv_path: Path):
+    """Daily mean-reversion sleeve returns and holdings."""
     signals = compute_reversal_signal(load_panel(csv_path))
-    return backtest_mean_reversion(signals)["port_ret"]
+    port_df, holdings = backtest_mean_reversion(signals)
+    return port_df["port_ret"], holdings

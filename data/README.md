@@ -4,6 +4,7 @@
 |---|---|---|
 | `spy_features.csv` | Built by `src/features.py` from SPY daily OHLC (Yahoo Finance), 2002-01-31 to 2024-12-30 | yes |
 | `sleeve_returns.csv` | Built by `src/build_sleeves.py` from CRSP; daily returns of the two sleeves, 2006-01-03 to 2024-12-31 | yes |
+| `sleeve_turnover.csv` | Built by `src/build_sleeves.py` from the sleeves' daily holdings; one-way turnover for each sleeve-to-sleeve transition | yes |
 | `crsp_sp500_daily.csv` | CRSP daily stock file via WRDS | **no**, licensed |
 
 ## CRSP extract
