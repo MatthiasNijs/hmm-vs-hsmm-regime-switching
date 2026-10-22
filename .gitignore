@@ -1,0 +1,12 @@
+# Licensed CRSP data (see data/README.md)
+data/crsp_*.csv
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# R
+.Rhistory
+.RData
+.Rproj.user/
