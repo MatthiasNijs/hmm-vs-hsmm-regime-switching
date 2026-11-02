@@ -132,13 +132,17 @@ def _peak_indices(eq: pd.Series) -> np.ndarray:
 
 def _drawdown_episodes(eq: pd.Series, vol_21: pd.Series, threshold: float, min_duration: int,
                        max_duration: int, tail_extension_days: int,
-                       exclude_below: float | None = None) -> pd.DataFrame:
+                       exclude_below: float | None = None,
+                       whole_drawdown: bool = False) -> pd.DataFrame:
     """
     Episodes where the drawdown falls below `threshold`:
     peak = running peak before the episode, trough = lowest point in the run below
-    threshold, end = trough + tail_extension_days. Episodes outside
-    [min_duration, max_duration] (peak to end) are dropped, as are runs that also
-    fall below `exclude_below`. Overlapping episodes keep the earliest one.
+    threshold (with whole_drawdown, the lowest point before the market regains
+    that peak, so brief recoveries above threshold do not split an episode),
+    end = trough + tail_extension_days. Episodes outside
+    [min_duration, max_duration] (peak to end; no upper limit if max_duration is
+    None) are dropped, as are episodes that also fall below `exclude_below`.
+    Overlapping episodes keep the earliest one.
     """
     dd = eq / eq.cummax() - 1.0
     below = dd <= threshold
@@ -152,19 +156,21 @@ def _drawdown_episodes(eq: pd.Series, vol_21: pd.Series, threshold: float, min_d
             continue
 
         run_start = i
-        while i + 1 < n and below.iloc[i + 1]:
-            i += 1
+        peak_idx = peaks[run_start]
         run_end = i
+        while i + 1 < n and (below.iloc[i + 1] or (whole_drawdown and peaks[i + 1] == peak_idx)):
+            i += 1
+            if below.iloc[i]:
+                run_end = i
 
         if exclude_below is not None and (dd.iloc[run_start: run_end + 1] <= exclude_below).any():
             i += 1
             continue
 
-        peak_idx = peaks[run_start]
         trough_idx = run_start + int(eq.iloc[run_start: run_end + 1].values.argmin())
         end_idx = min(trough_idx + tail_extension_days, n - 1)
         duration = end_idx - peak_idx + 1
-        if min_duration <= duration <= max_duration:
+        if min_duration <= duration and (max_duration is None or duration <= max_duration):
             episodes.append({
                 "peak_date": eq.index[peak_idx],
                 "trough_date": eq.index[trough_idx],
@@ -189,10 +195,10 @@ def _drop_overlapping(episodes: pd.DataFrame) -> pd.DataFrame:
 
 
 def find_persistent_drawdowns(eq_spy, vol_21, dd_threshold=-0.25, min_duration=60,
-                              max_duration=300, tail_extension_days=40, vol_quantile=0.75):
+                              max_duration=None, tail_extension_days=40, vol_quantile=0.75):
     """Long drawdowns whose average volatility is above the vol_quantile of the full sample."""
     eps = _drawdown_episodes(eq_spy.dropna(), vol_21, dd_threshold, min_duration,
-                             max_duration, tail_extension_days)
+                             max_duration, tail_extension_days, whole_drawdown=True)
     eps = eps[eps["avg_vol_21"] >= vol_21.dropna().quantile(vol_quantile)]
     return _drop_overlapping(eps)
 

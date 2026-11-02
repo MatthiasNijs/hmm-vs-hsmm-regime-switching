@@ -1,6 +1,6 @@
 # Does regime duration matter? HMM vs HSMM for strategy allocation
 
-Individual research paper, McGill University (FINE 547), December 2025; revised October 2026.
+Individual research paper, McGill University (FINE 547), December 2025; revised November 2026.
 **[Read the paper (PDF)](report/hmm_vs_hsmm_regime_switching.pdf)**
 
 A standard hidden Markov model assumes regimes are memoryless: the chance of leaving
@@ -82,13 +82,14 @@ lengthening regimes.
 ### Behaviour in drawdowns
 
 Episodes are detected by an algorithm, not chosen by hand, and every detected episode is
-reported.
+reported. A persistent drawdown runs from the market peak to the lowest close before SPY
+regains that peak.
 
 | Persistent drawdown | SPY drawdown | HMM return | HSMM return | Switches (HMM / HSMM) | Days defensive (HMM / HSMM) |
 |---|---:|---:|---:|---:|---:|
-| 2007–08 financial crisis | −25.5% | +99.1% | +90.6% | 5 / 1 | 88% / 97% |
+| 2007–09 financial crisis | −56.5% | +179.4% | +167.5% | 5 / 1 | 92% / 98% |
 | 2020 Covid crash | −34.1% | +44.0% | +44.0% | 1 / 1 | 94% / 94% |
-| 2022 rate-hike drawdown | −25.2% | +3.7% | +8.2% | 6 / 0 | 93% / 100% |
+| 2022 rate-hike drawdown | −25.4% | +3.3% | +8.6% | 6 / 1 | 93% / 100% |
 
 | Short spike | SPY drawdown | HMM return | HSMM return |
 |---|---:|---:|---:|
@@ -140,6 +141,12 @@ of extra alpha.
 - A single market, a single pair of sleeves, two states, and one duration family
   (shifted Poisson). Financing costs and short-sale constraints are ignored.
 - Few extreme episodes exist in the data, so the episode-level comparison is anecdotal.
+- The mean-reversion sleeve's return is concentrated in time: 2008 and 2020 contribute
+  about 60% of its summed daily returns, and without September 2008 to June 2009 its
+  Sharpe ratio falls from 0.69 to 0.57.
+- Stock returns are CRSP price returns excluding dividends (`DlyRetx`). This understates
+  the long-only momentum sleeve by roughly the index dividend yield and leaves the
+  long-short mean-reversion sleeve largely unaffected.
 
 ## Reproducing
 
@@ -150,7 +157,7 @@ pip install -r requirements.txt
 Rscript -e 'install.packages("mhsmm")'
 
 python src/hmm_backtest.py       # -> results/hmm_gated.csv      (~2 min)
-Rscript src/hsmm_backtest.R      # -> results/hsmm_regimes.csv   (~15 min: 228 refits, daily re-filtering)
+Rscript src/hsmm_backtest.R      # -> results/hsmm_regimes.csv   (~7 min: 228 refits, daily re-filtering)
 python src/hsmm_gate.py          # -> results/hsmm_gated.csv
 python src/analysis.py           # -> results/tables/, results/figures/
 python src/transaction_costs.py  # -> results/tables/transaction_costs.csv
